@@ -25,7 +25,8 @@ class PushNotificationService extends ChangeNotifier {
   );
 
   FirebaseMessaging get _messaging => FirebaseMessaging.instance;
-  final FlutterLocalNotificationsPlugin _local = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _local =
+      FlutterLocalNotificationsPlugin();
   final List<RemoteMessage> messages = [];
   StreamSubscription<RemoteMessage>? _foregroundSubscription;
   StreamSubscription<RemoteMessage>? _openedSubscription;
@@ -64,7 +65,9 @@ class PushNotificationService extends ChangeNotifier {
           ),
         );
         await _local
-            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >()
             ?.createNotificationChannel(channel);
       }
 
@@ -86,9 +89,7 @@ class PushNotificationService extends ChangeNotifier {
         );
       }
 
-      token = await _messaging.getToken(
-        vapidKey: kIsWeb ? webVapidKey : null,
-      );
+      token = await _messaging.getToken(vapidKey: kIsWeb ? webVapidKey : null);
       await _registerToken();
       _tokenSubscription = _messaging.onTokenRefresh.listen((newToken) async {
         token = newToken;
@@ -97,20 +98,25 @@ class PushNotificationService extends ChangeNotifier {
         await _registerToken();
       });
 
-      _foregroundSubscription = FirebaseMessaging.onMessage.listen((message) async {
+      _foregroundSubscription = FirebaseMessaging.onMessage.listen((
+        message,
+      ) async {
         _addMessage(message);
         final notification = message.notification;
         // iOS already displays foreground alerts via presentation options.
-        if (defaultTargetPlatform == TargetPlatform.android && notification != null) {
+        if (defaultTargetPlatform == TargetPlatform.android &&
+            notification != null) {
           await _local.show(
-            message.messageId?.hashCode ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
+            message.messageId?.hashCode ??
+                DateTime.now().millisecondsSinceEpoch ~/ 1000,
             notification.title,
             notification.body,
             const NotificationDetails(
               android: AndroidNotificationDetails(
                 'zenithis_notifications',
                 'Notifications Zenithis',
-                channelDescription: 'Notifications envoyées depuis Novu et Firebase FCM',
+                channelDescription:
+                    'Notifications envoyées depuis Novu et Firebase FCM',
                 importance: Importance.high,
                 priority: Priority.high,
               ),
@@ -118,7 +124,9 @@ class PushNotificationService extends ChangeNotifier {
           );
         }
       });
-      _openedSubscription = FirebaseMessaging.onMessageOpenedApp.listen(_addMessage);
+      _openedSubscription = FirebaseMessaging.onMessageOpenedApp.listen(
+        _addMessage,
+      );
       final initialMessage = await _messaging.getInitialMessage();
       if (initialMessage != null) _addMessage(initialMessage);
       initialized = true;
@@ -130,7 +138,9 @@ class PushNotificationService extends ChangeNotifier {
   }
 
   void _addMessage(RemoteMessage message) {
-    if (messages.any((item) => item.messageId != null && item.messageId == message.messageId)) {
+    if (messages.any(
+      (item) => item.messageId != null && item.messageId == message.messageId,
+    )) {
       return;
     }
     messages.insert(0, message);
@@ -138,15 +148,23 @@ class PushNotificationService extends ChangeNotifier {
   }
 
   Future<void> _registerToken() async {
-    if (token == null || registerEndpoint.isEmpty || subscriberId.isEmpty) return;
+    if (token == null || registerEndpoint.isEmpty || subscriberId.isEmpty)
+      return;
     try {
       final uri = Uri.parse(registerEndpoint);
-      if (uri.scheme != 'https') throw const FormatException('HTTPS obligatoire');
-      final response = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'subscriberId': subscriberId, 'providerId': 'fcm', 'token': token}),
-      ).timeout(const Duration(seconds: 12));
+      if (uri.scheme != 'https')
+        throw const FormatException('HTTPS obligatoire');
+      final response = await http
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'subscriberId': subscriberId,
+              'providerId': 'fcm',
+              'token': token,
+            }),
+          )
+          .timeout(const Duration(seconds: 12));
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw Exception('HTTP ${response.statusCode}');
       }
