@@ -14,7 +14,7 @@ const integrationIdentifier = env.NOVU_FCM_INTEGRATION_IDENTIFIER || '';
 const triggerKey = env.TEST_TRIGGER_KEY || '';
 const link = env.WEB_PUSH_LINK || '';
 
-if (!novuUrl.startsWith('https://') || !novuKey || !triggerKey || !Number.isInteger(port) || port < 1 || port > 65535) {
+if (!novuUrl.startsWith('https://') || novuUrl.includes('YOUR_NOVU_API_HOST') || !novuKey || novuKey.startsWith('REPLACE_WITH_') || !triggerKey || triggerKey.startsWith('REPLACE_WITH_') || !Number.isInteger(port) || port < 1 || port > 65535) {
   console.error('Configure NOVU_API_BASE_URL (HTTPS), NOVU_SECRET_KEY, TEST_TRIGGER_KEY et PORT dans backend/.env');
   process.exit(1);
 }
@@ -38,16 +38,21 @@ const readJson = async (req) => {
   }
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 };
-async function novu(path, method, body) {
+async function novu(path, method = 'GET', body) {
   const response = await fetch(novuUrl + path, {
     method,
     headers,
-    body: JSON.stringify(body),
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     signal: AbortSignal.timeout(12000),
   });
   const raw = await response.text();
   if (!response.ok) {
-    console.error('Novu API error:', response.status, raw.slice(0, 500));
+    // Do not log Novu response bodies: they can contain private account data.
+    console.error('Novu API error:', response.status, method, path);
+    if (response.status === 401 || response.status === 403) {
+      throw new Error('NOVU_AUTH_FAILED_' + response.status +
+        ': vérifier NOVU_SECRET_KEY, environnement Novu et NOVU_API_BASE_URL');
+    }
     throw new Error('NOVU_HTTP_' + response.status);
   }
   return raw ? JSON.parse(raw) : {};
@@ -65,6 +70,21 @@ const server = createServer(async (req, res) => {
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
     return res.end();
+  }
+  if (req.url === '/health' && req.method === 'GET') {
+    return send(res, 200, { status: 'ok', novuApiHost: new URL(novuUrl).host });
+  }
+  if (req.url === '/push/check-novu' && req.method === 'POST') {
+    if (req.headers.authorization !== 'Bearer ' + triggerKey) {
+      return send(res, 401, { error: 'UNAUTHORIZED' });
+    }
+    try {
+      await novu('/v1/subscribers?limit=1');
+      return send(res, 200, { connected: true });
+    } catch (error) {
+      console.error('Novu connection check:', error.message);
+      return send(res, 502, { connected: false, error: error.message });
+    }
   }
   if (req.method !== 'POST') return send(res, 405, { error: 'METHOD_NOT_ALLOWED' });
   try {
