@@ -26,9 +26,17 @@ flutter run -d chrome `
   --dart-define=FIREBASE_WEB_VAPID_KEY=VOTRE_CLE_PUBLIQUE_VAPID
 ```
 
-Sur le site, ouvrir la cloche puis cliquer sur **Initialiser FCM** : le navigateur demandera l'autorisation d'afficher des notifications. Vérifier ensuite la présence du token FCM.
+L'initialisation FCM (permission navigateur + récupération du token) est désormais lancée **automatiquement** au démarrage sur le web, il n'est plus nécessaire de cliquer sur « Initialiser FCM ».
 
-Les notifications Web demandent HTTPS (ou localhost en développement), l'autorisation de l'utilisateur, un service worker valide, et un navigateur compatible. La réception au premier plan actualise la liste des notifications de l'application ; lorsque l'onglet est en arrière-plan, le service worker affiche les notifications système.
+Les notifications Web demandent **HTTPS (ou localhost en développement)**, l'autorisation de l'utilisateur, un service worker valide, et un navigateur compatible. La réception au premier plan actualise la liste des notifications de l'application ; lorsque l'onglet est en arrière-plan, le service worker affiche les notifications système.
+
+## Checklist avant de tester
+
+- [ ] Les cinq valeurs `FIREBASE_WEB_*` sont renseignées et **identiques** à celles écrites en dur dans `web/firebase-messaging-sw.js`.
+- [ ] `FIREBASE_WEB_VAPID_KEY` (clé publique VAPID) est renseigné.
+- [ ] L'application est servie en `https://` ou sur `localhost`.
+- [ ] `web/firebase-messaging-sw.js` est accessible à la racine du site (`/firebase-messaging-sw.js`) et retourne un code 200.
+- [ ] Dans Firebase Console > Cloud Messaging > Web Push certificates, une clé publique VAPID est configurée pour le projet.
 
 ## 4. Relier Novu
 

@@ -36,7 +36,8 @@ Future<void> main() async {
             authDomain: webAuthDomain,
           ),
         );
-        // Request browser notification permission from the Notifications page button.
+        // Demander la permission du navigateur et récupérer le token FCM automatiquement sur le web.
+        await PushNotificationService.instance.initialize();
       }
     } else {
       await Firebase.initializeApp();
