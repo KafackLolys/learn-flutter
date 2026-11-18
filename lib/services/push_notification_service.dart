@@ -27,6 +27,7 @@ class PushNotificationService extends ChangeNotifier {
   FirebaseMessaging get _messaging => FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _local = FlutterLocalNotificationsPlugin();
   final List<RemoteMessage> messages = [];
+  RemoteMessage? latestForegroundMessage;
   StreamSubscription<RemoteMessage>? _foregroundSubscription;
   StreamSubscription<RemoteMessage>? _openedSubscription;
   StreamSubscription<String>? _tokenSubscription;
@@ -89,7 +90,6 @@ class PushNotificationService extends ChangeNotifier {
       token = await _messaging.getToken(
         vapidKey: kIsWeb ? webVapidKey : null,
       );
-      await _registerToken();
       _tokenSubscription = _messaging.onTokenRefresh.listen((newToken) async {
         token = newToken;
         registeredWithBackend = false;
@@ -99,6 +99,8 @@ class PushNotificationService extends ChangeNotifier {
 
       _foregroundSubscription = FirebaseMessaging.onMessage.listen((message) async {
         _addMessage(message);
+        latestForegroundMessage = message;
+        notifyListeners();
         final notification = message.notification;
         // iOS already displays foreground alerts via presentation options.
         if (defaultTargetPlatform == TargetPlatform.android && notification != null) {
@@ -123,6 +125,8 @@ class PushNotificationService extends ChangeNotifier {
       if (initialMessage != null) _addMessage(initialMessage);
       initialized = true;
       error = null;
+      notifyListeners();
+      await _registerToken();
     } catch (exception) {
       error = 'Initialisation FCM impossible : $exception';
     }
@@ -138,7 +142,21 @@ class PushNotificationService extends ChangeNotifier {
   }
 
   Future<void> _registerToken() async {
-    if (token == null || registerEndpoint.isEmpty || subscriberId.isEmpty) return;
+    registeredWithBackend = false;
+    if (token == null || token!.isEmpty) {
+      error = 'Token FCM indisponible. Initialisez FCM avant de vous enregistrer.';
+      notifyListeners();
+      return;
+    }
+    if (registerEndpoint.isEmpty || subscriberId.isEmpty) {
+      error = 'Configuration Novu manquante : '
+          '${registerEndpoint.isEmpty ? "PUSH_REGISTER_URL" : ""}'
+          '${registerEndpoint.isEmpty && subscriberId.isEmpty ? " et " : ""}'
+          '${subscriberId.isEmpty ? "NOVU_SUBSCRIBER_ID" : ""}. '
+          'Ajoutez ces valeurs au fichier de configuration puis redémarrez Flutter.';
+      notifyListeners();
+      return;
+    }
     try {
       final uri = Uri.parse(registerEndpoint);
       // HTTP is allowed only for a loopback development bridge in Flutter Web.
@@ -154,7 +172,10 @@ class PushNotificationService extends ChangeNotifier {
         body: jsonEncode({'subscriberId': subscriberId, 'providerId': 'fcm', 'token': token}),
       ).timeout(const Duration(seconds: 12));
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception('HTTP ${response.statusCode}');
+        final detail = response.body.length > 300
+            ? response.body.substring(0, 300)
+            : response.body;
+        throw Exception('HTTP ${response.statusCode} : $detail');
       }
       registeredWithBackend = true;
       error = null;
