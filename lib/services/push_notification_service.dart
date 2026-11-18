@@ -141,7 +141,13 @@ class PushNotificationService extends ChangeNotifier {
     if (token == null || registerEndpoint.isEmpty || subscriberId.isEmpty) return;
     try {
       final uri = Uri.parse(registerEndpoint);
-      if (uri.scheme != 'https') throw const FormatException('HTTPS obligatoire');
+      // HTTP is allowed only for a loopback development bridge in Flutter Web.
+      final localWeb = kIsWeb &&
+          uri.scheme == 'http' &&
+          (uri.host == '127.0.0.1' || uri.host == 'localhost');
+      if (uri.scheme != 'https' && !localWeb) {
+        throw const FormatException('HTTPS obligatoire hors du développement Web local');
+      }
       final response = await http.post(
         uri,
         headers: {'Content-Type': 'application/json'},
