@@ -68,7 +68,16 @@ class PushNotificationService extends ChangeNotifier {
             ?.createNotificationChannel(channel);
       }
 
-      await _messaging.requestPermission(alert: true, badge: true, sound: true);
+      // On Web, getToken() itself asks the browser for notification permission.
+      // Some FlutterFire Web versions fail in requestPermission() before the
+      // browser prompt can appear. Keep the native permission flow unchanged.
+      if (!kIsWeb) {
+        await _messaging.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+      }
       if (!kIsWeb) {
         await _messaging.setForegroundNotificationPresentationOptions(
           alert: true,
