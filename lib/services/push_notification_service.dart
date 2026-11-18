@@ -41,33 +41,45 @@ class PushNotificationService extends ChangeNotifier {
   static const registerEndpoint = String.fromEnvironment('PUSH_REGISTER_URL');
   static const subscriberId = String.fromEnvironment('NOVU_SUBSCRIBER_ID');
 
+  static const webVapidKey = String.fromEnvironment('FIREBASE_WEB_VAPID_KEY');
+
+  void configurationError(String message) {
+    error = message;
+    notifyListeners();
+  }
+
   Future<void> initialize() async {
     if (initialized) return;
-    if (kIsWeb) {
-      error = 'Push Web : configuration VAPID et service worker requise.';
-      notifyListeners();
+    if (kIsWeb && webVapidKey.isEmpty) {
+      configurationError('Clé VAPID manquante : FIREBASE_WEB_VAPID_KEY.');
       return;
     }
 
     try {
-      await _local.initialize(
-        const InitializationSettings(
-          android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-          iOS: DarwinInitializationSettings(),
-        ),
-      );
-      await _local
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(channel);
+      if (!kIsWeb) {
+        await _local.initialize(
+          const InitializationSettings(
+            android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+            iOS: DarwinInitializationSettings(),
+          ),
+        );
+        await _local
+            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+            ?.createNotificationChannel(channel);
+      }
 
       await _messaging.requestPermission(alert: true, badge: true, sound: true);
-      await _messaging.setForegroundNotificationPresentationOptions(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
+      if (!kIsWeb) {
+        await _messaging.setForegroundNotificationPresentationOptions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+      }
 
-      token = await _messaging.getToken();
+      token = await _messaging.getToken(
+        vapidKey: kIsWeb ? webVapidKey : null,
+      );
       await _registerToken();
       _tokenSubscription = _messaging.onTokenRefresh.listen((newToken) async {
         token = newToken;
