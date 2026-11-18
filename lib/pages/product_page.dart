@@ -26,6 +26,7 @@ class _ProductPageState extends State<ProductPage> {
   @override
   void initState() {
     super.initState();
+    _lastDisplayedMessage = _push.latestForegroundMessage;
     _push.addListener(_showForegroundNotification);
   }
 
