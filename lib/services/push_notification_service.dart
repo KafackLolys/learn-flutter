@@ -24,7 +24,7 @@ class PushNotificationService extends ChangeNotifier {
     importance: Importance.high,
   );
 
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  FirebaseMessaging get _messaging => FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _local = FlutterLocalNotificationsPlugin();
   final List<RemoteMessage> messages = [];
   StreamSubscription<RemoteMessage>? _foregroundSubscription;
