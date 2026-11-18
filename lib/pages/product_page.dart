@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/product.dart';
 import '../data/product_data.dart';
 import 'notifications_page.dart';
+import '../services/push_notification_service.dart';
 
 class ProductPage extends StatefulWidget {
   const ProductPage({super.key});
@@ -20,6 +21,38 @@ class _ProductPageState extends State<ProductPage> {
   final quantityController = TextEditingController();
 
   int nextId = 4;
+  final _push = PushNotificationService.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _push.addListener(_showForegroundNotification);
+  }
+
+  void _showForegroundNotification() {
+    final message = _push.latestForegroundMessage;
+    if (!mounted || message == null || identical(message, _lastDisplayedMessage)) {
+      return;
+    }
+    _lastDisplayedMessage = message;
+    final title = message.notification?.title ??
+        message.data['title']?.toString() ?? 'Notification';
+    final body = message.notification?.body ??
+        message.data['body']?.toString() ?? '';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(body.isEmpty ? title : '$title — $body'),
+        action: SnackBarAction(
+          label: 'Voir',
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const NotificationsPage()),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Object? _lastDisplayedMessage;
 
   void showForm({Product? product}) {
     nameController.text = product?.name ?? '';
@@ -145,6 +178,7 @@ class _ProductPageState extends State<ProductPage> {
 
   @override
   void dispose() {
+    _push.removeListener(_showForegroundNotification);
     nameController.dispose();
     descriptionController.dispose();
     priceController.dispose();
