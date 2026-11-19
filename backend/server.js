@@ -53,6 +53,11 @@ async function novu(path, method = 'GET', body) {
       throw new Error('NOVU_AUTH_FAILED_' + response.status +
         ': vérifier NOVU_SECRET_KEY, environnement Novu et NOVU_API_BASE_URL');
     }
+    if (response.status === 400 || response.status === 422) {
+      throw new Error('NOVU_VALIDATION_' + response.status + ' (' + method + ' ' +
+        path.split('?')[0].replace(encodeURIComponent(subscriberId), ':subscriberId') +
+        '): vérifier le payload et NOVU_FCM_INTEGRATION_IDENTIFIER');
+    }
     throw new Error('NOVU_HTTP_' + response.status);
   }
   return raw ? JSON.parse(raw) : {};
@@ -96,11 +101,17 @@ const server = createServer(async (req, res) => {
           typeof body.token !== 'string' || body.token.length < 20 || body.token.length > 4096) {
         return send(res, 400, { error: 'INVALID_DEVICE_REGISTRATION' });
       }
-      // Ensure the test subscriber exists. A conflict means it already exists.
+      // Creating an existing subscriber can return 400 on some Novu versions.
+      // Retrieve first; create only when Novu confirms the subscriber is absent.
       try {
-        await novu('/v1/subscribers', 'POST', { subscriberId });
+        await novu('/v1/subscribers/' + encodeURIComponent(subscriberId));
       } catch (error) {
-        if (error.message !== 'NOVU_HTTP_409') throw error;
+        if (error.message !== 'NOVU_HTTP_404') throw error;
+        try {
+          await novu('/v1/subscribers', 'POST', { subscriberId });
+        } catch (createError) {
+          if (createError.message !== 'NOVU_HTTP_409') throw createError;
+        }
       }
       await novu('/v1/subscribers/' + encodeURIComponent(subscriberId) + '/credentials', 'PUT', {
         providerId: 'fcm',
