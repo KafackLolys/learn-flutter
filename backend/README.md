@@ -63,6 +63,14 @@ flutter run -d web-server --web-hostname localhost --web-port 8080 --dart-define
 
 Ouvrir manuellement `http://localhost:8080` dans Chrome/Edge : le navigateur lancé automatiquement par `flutter run -d chrome` désactive les notifications Web. Ouvrir la cloche et cliquer sur « Initialiser FCM » ou « Réessayer l'enregistrement ».
 
+Si Novu renvoie `NOVU_VALIDATION_400`, regarder la route indiquée dans l'erreur :
+
+- `GET /v1/subscribers/:subscriberId` : vérifier le support de cette API par la version auto-hébergée.
+- `POST /v1/subscribers` : vérifier le format requis par la version Novu installée.
+- `PUT /v1/subscribers/:subscriberId/credentials` : vérifier que l'intégration FCM est active dans le même environnement et renseigner `NOVU_FCM_INTEGRATION_IDENTIFIER` avec l'identifiant de l'intégration FCM visible dans le tableau de bord Novu (et non l'identifiant du workflow). Cet identifiant est notamment important lorsque plusieurs intégrations FCM existent.
+
+La passerelle tente maintenant de récupérer le subscriber avant de le créer, afin d'éviter certaines erreurs 400 liées aux doublons.
+
 Une réponse `{"registered":true}` signifie que le backend a réussi l'association FCM dans Novu. Le backend utilise `PUT /v1/subscribers/{id}/credentials` : cette version de test maintient **un seul token par subscriber** et peut remplacer les autres. Pour le multi-appareil, prévoir la conservation des tokens existants.
 
 ## 5. Déclencher le workflow avec la structure demandée
