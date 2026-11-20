@@ -22,7 +22,7 @@ L'application reçoit les notifications FCM sur Android/iOS et affiche une notif
 ## 2. Configurer Novu sur notify.zenithis.tech
 
 1. Ouvrir https://notify.zenithis.tech/integrations et ajouter ou vérifier une intégration **Firebase Cloud Messaging (FCM)** dans le canal Push.
-2. Renseigner les identifiants de **compte de service Firebase** dans Novu (côté serveur uniquement) suivant la version de Novu installée. Vérifier que l'intégration est active et relever son `integrationIdentifier` si votre version en utilise un.
+2. Renseigner les identifiants de **compte de service Firebase** dans Novu (côté serveur uniquement) suivant la version de Novu installée. Vérifier que l'intégration est active. L'`integrationIdentifier` se trouve dans les détails de cette intégration ; ce n'est pas l'`Application Identifier` visible dans **API Keys**. Avec une seule intégration FCM, `NOVU_FCM_INTEGRATION_IDENTIFIER` peut rester vide.
 3. Créer un workflow Novu ayant une étape **Push** et tester son déclenchement pour un `subscriberId` connu.
 
 **Le client Flutter ne doit jamais appeler l'API Novu avec une clé secrète.** L'URL `https://notify.zenithis.tech/integrations` est une interface d'administration, pas l'endpoint d'enregistrement des tokens.

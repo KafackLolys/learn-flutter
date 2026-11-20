@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/product.dart';
 import '../data/product_data.dart';
 import 'notifications_page.dart';
+import '../services/push_notification_service.dart';
 
 class ProductPage extends StatefulWidget {
   const ProductPage({super.key});
@@ -20,6 +21,39 @@ class _ProductPageState extends State<ProductPage> {
   final quantityController = TextEditingController();
 
   int nextId = 4;
+  final _push = PushNotificationService.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastDisplayedMessage = _push.latestForegroundMessage;
+    _push.addListener(_showForegroundNotification);
+  }
+
+  void _showForegroundNotification() {
+    final message = _push.latestForegroundMessage;
+    if (!mounted || message == null || identical(message, _lastDisplayedMessage)) {
+      return;
+    }
+    _lastDisplayedMessage = message;
+    final title = message.notification?.title ??
+        message.data['title']?.toString() ?? 'Notification';
+    final body = message.notification?.body ??
+        message.data['body']?.toString() ?? '';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(body.isEmpty ? title : '$title — $body'),
+        action: SnackBarAction(
+          label: 'Voir',
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const NotificationsPage()),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Object? _lastDisplayedMessage;
 
   void showForm({Product? product}) {
     nameController.text = product?.name ?? '';
@@ -133,8 +167,14 @@ class _ProductPageState extends State<ProductPage> {
           ),
           TextButton(
             onPressed: () {
-              setState(() => products.removeWhere((p) => p.id == product.id));
-              Navigator.pop(dialogContext);
+              final productIndex = products.indexWhere((p) => p.id == product.id);
+              if (productIndex == -1) {
+                Navigator.pop(dialogContext);
+                return;
+              }
+
+              setState(() => products.removeAt(productIndex));
+              _notifyProductDeleted(product);
             },
             child: const Text('Supprimer'),
           ),
@@ -143,8 +183,28 @@ class _ProductPageState extends State<ProductPage> {
     );
   }
 
+  Future<void> _notifyProductDeleted(Product product) async {
+    try {
+      await _push.notifyProductDeleted(product.name);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(
+          content: Text('Notification push envoyée (Novu)'),
+        ));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: Text('Push Novu non déclenché : $error'),
+        ));
+    }
+  }
+
   @override
   void dispose() {
+    _push.removeListener(_showForegroundNotification);
     nameController.dispose();
     descriptionController.dispose();
     priceController.dispose();

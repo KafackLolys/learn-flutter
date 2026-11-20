@@ -48,3 +48,7 @@ app.*.map.json
 .widget_preview/
 
 .env.*
+
+# Local Novu backend secrets (never commit)
+**/.env
+**/.env.local
