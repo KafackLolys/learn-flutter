@@ -167,14 +167,39 @@ class _ProductPageState extends State<ProductPage> {
           ),
           TextButton(
             onPressed: () {
-              setState(() => products.removeWhere((p) => p.id == product.id));
-              Navigator.pop(dialogContext);
+              final productIndex = products.indexWhere((p) => p.id == product.id);
+              if (productIndex == -1) {
+                Navigator.pop(dialogContext);
+                return;
+              }
+
+              setState(() => products.removeAt(productIndex));
+              _notifyProductDeleted(product);
             },
             child: const Text('Supprimer'),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _notifyProductDeleted(Product product) async {
+    try {
+      await _push.notifyProductDeleted(product.name);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(
+          content: Text('Notification push envoyée (Novu)'),
+        ));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: Text('Push Novu non déclenché : $error'),
+        ));
+    }
   }
 
   @override

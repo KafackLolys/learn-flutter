@@ -40,6 +40,8 @@ class PushNotificationService extends ChangeNotifier {
   // The endpoint must authenticate the current user and call Novu SERVER-SIDE.
   // Do not put a Novu secret key inside Flutter or in --dart-define.
   static const registerEndpoint = String.fromEnvironment('PUSH_REGISTER_URL');
+  static const productDeletedEndpoint =
+      String.fromEnvironment('PUSH_PRODUCT_DELETED_URL');
   static const subscriberId = String.fromEnvironment('NOVU_SUBSCRIBER_ID');
 
   static const webVapidKey = String.fromEnvironment('FIREBASE_WEB_VAPID_KEY');
@@ -186,6 +188,42 @@ class PushNotificationService extends ChangeNotifier {
   }
 
   Future<void> retryRegistration() => _registerToken();
+
+  Future<void> notifyProductDeleted(String productName) async {
+    if (productDeletedEndpoint.isEmpty) {
+      throw StateError('PUSH_PRODUCT_DELETED_URL n’est pas configurée.');
+    }
+    if (!registeredWithBackend) {
+      throw StateError(
+        'Appareil non enregistré auprès de Novu. '
+        'Initialisez FCM et enregistrez le token (bouton « Réessayer l’enregistrement ») '
+        'avant d’envoyer une notification de suppression.',
+      );
+    }
+    final uri = Uri.parse(productDeletedEndpoint);
+    final localWeb = kIsWeb &&
+        uri.scheme == 'http' &&
+        (uri.host == '127.0.0.1' || uri.host == 'localhost');
+    if (uri.scheme != 'https' && !localWeb) {
+      throw const FormatException(
+        'HTTPS obligatoire hors du développement Web local',
+      );
+    }
+
+    final response = await http
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'productName': productName}),
+        )
+        .timeout(const Duration(seconds: 12));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final detail = response.body.length > 300
+          ? response.body.substring(0, 300)
+          : response.body;
+      throw Exception('HTTP ${response.statusCode} : $detail');
+    }
+  }
 
   @override
   void dispose() {

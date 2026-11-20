@@ -11,6 +11,8 @@ Cette passerelle Node.js est **réservée au développement local**. Elle n'impl
 
 Copier `backend/.env.example` vers `backend/.env`, puis compléter les paramètres. Ne jamais committer `backend/.env`.
 
+`NOVU_ENVIRONMENT` est une étiquette locale de diagnostic, pas une vérification distante. La clé `NOVU_SECRET_KEY`, le subscriber et l'intégration FCM doivent tous appartenir au même environnement que le workflow. La capture actuelle montre `Production` ; utiliser une clé API Production et une intégration FCM active dans Production. Après tout changement de `.env`, arrêter puis relancer le backend.
+
 L'URL Novu API n'est **pas nécessairement** `https://notify.zenithis.tech`. Utiliser l'URL réelle de l'API qui gère cette installation. `https://api.novu.co` convient seulement à Novu Cloud. Une adresse du tableau de bord (par exemple `https://notify.zenithis.tech`) n'est pas automatiquement l'adresse API. L'URL doit être l'origine HTTPS de l'API, sans le suffixe `/v1`.
 
 ## 2. Lancer le backend
@@ -49,9 +51,12 @@ Dans le fichier `.env.json` du projet Flutter :
 ```json
 {
   "PUSH_REGISTER_URL": "http://127.0.0.1:3000/push/register",
+  "PUSH_PRODUCT_DELETED_URL": "http://127.0.0.1:3000/push/product-deleted",
   "NOVU_SUBSCRIBER_ID": "flutter-test-001"
 }
 ```
+
+Après suppression d'un produit, Flutter appelle `PUSH_PRODUCT_DELETED_URL`. La passerelle déclenche le workflow configuré par `NOVU_WORKFLOW_ID` avec `payload.title` et `payload.body`. Le Push step du workflow doit utiliser ces champs. Cette route cible uniquement le subscriber de test configuré dans `backend/.env` ; elle est réservée au bridge local sans authentification utilisateur.
 
 Ajouter les variables ci-dessus à ton fichier Firebase déjà existant (ne pas supprimer les autres entrées). Le client Flutter autorise HTTP **uniquement pour les adresses loopback Web de développement**. Sur Android, utiliser une véritable API HTTPS.
 
@@ -67,7 +72,7 @@ Si Novu renvoie `NOVU_VALIDATION_400`, regarder la route indiquée dans l'erreur
 
 - `GET /v1/subscribers/:subscriberId` : vérifier le support de cette API par la version auto-hébergée.
 - `POST /v1/subscribers` : vérifier le format requis par la version Novu installée.
-- `PUT /v1/subscribers/:subscriberId/credentials` : vérifier que l'intégration FCM est active dans le même environnement et renseigner `NOVU_FCM_INTEGRATION_IDENTIFIER` avec l'identifiant de l'intégration FCM visible dans le tableau de bord Novu (et non l'identifiant du workflow). Cet identifiant est notamment important lorsque plusieurs intégrations FCM existent.
+- `PUT /v1/subscribers/:subscriberId/credentials` : vérifier que l'intégration FCM est active dans le même environnement. `NOVU_FCM_INTEGRATION_IDENTIFIER` est facultatif lorsqu'il n'existe qu'une seule intégration FCM active ; laissez-le vide pour que Novu choisisse l'intégration par défaut. Si plusieurs intégrations FCM existent, renseignez l'`integrationIdentifier` affiché dans les détails de l'intégration FCM. Ne confondez pas cet identifiant avec l'`Application Identifier` de la page API Keys, l'identifiant du workflow ou `providerId: fcm`.
 
 La passerelle tente maintenant de récupérer le subscriber avant de le créer, afin d'éviter certaines erreurs 400 liées aux doublons.
 

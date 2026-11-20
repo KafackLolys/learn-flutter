@@ -7,9 +7,12 @@ const host = '127.0.0.1'; // Intentionally locked to loopback.
 const port = Number(env.PORT || 3000);
 const allowedOrigin = env.FLUTTER_WEB_ORIGIN || 'http://localhost:8080';
 const novuUrl = (env.NOVU_API_BASE_URL || '').replace(/\/+$/, '');
+const novuEnvironment = env.NOVU_ENVIRONMENT || 'unspecified';
 const novuKey = env.NOVU_SECRET_KEY || '';
 const subscriberId = env.NOVU_SUBSCRIBER_ID || 'flutter-test-001';
 const workflowId = env.NOVU_WORKFLOW_ID || 'com-test-flutter';
+// Optional when Novu has one active FCM integration. This must be the FCM
+// integration's identifier, never the public Application Identifier from API Keys.
 const integrationIdentifier = env.NOVU_FCM_INTEGRATION_IDENTIFIER || '';
 const triggerKey = env.TEST_TRIGGER_KEY || '';
 const link = env.WEB_PUSH_LINK || '';
@@ -56,7 +59,9 @@ async function novu(path, method = 'GET', body) {
     if (response.status === 400 || response.status === 422) {
       throw new Error('NOVU_VALIDATION_' + response.status + ' (' + method + ' ' +
         path.split('?')[0].replace(encodeURIComponent(subscriberId), ':subscriberId') +
-        '): vérifier le payload et NOVU_FCM_INTEGRATION_IDENTIFIER');
+        '): vérifier que NOVU_SECRET_KEY, le subscriber et l’intégration FCM appartiennent au même environnement Novu (' +
+        novuEnvironment + '), que l’intégration FCM est active et que le backend a été redémarré après toute modification de .env' +
+        (integrationIdentifier ? ', puis contrôler NOVU_FCM_INTEGRATION_IDENTIFIER' : ''));
     }
     throw new Error('NOVU_HTTP_' + response.status);
   }
@@ -77,7 +82,7 @@ const server = createServer(async (req, res) => {
     return res.end();
   }
   if (req.url === '/health' && req.method === 'GET') {
-    return send(res, 200, { status: 'ok', novuApiHost: new URL(novuUrl).host });
+    return send(res, 200, { status: 'ok', novuApiHost: new URL(novuUrl).host, configuredNovuEnvironment: novuEnvironment });
   }
   if (req.url === '/push/check-novu' && req.method === 'POST') {
     if (req.headers.authorization !== 'Bearer ' + triggerKey) {
@@ -120,6 +125,23 @@ const server = createServer(async (req, res) => {
       });
       return send(res, 200, { registered: true, subscriberId });
     }
+    if (req.url === '/push/product-deleted') {
+      // Local demo only: this bridge has no user authentication and is bound to loopback.
+      const productName = typeof body.productName === 'string' ? body.productName.trim() : '';
+      if (!productName || productName.length > 120) {
+        return send(res, 400, { error: 'INVALID_PRODUCT_NAME' });
+      }
+      const event = {
+        name: workflowId,
+        to: [subscriberId],
+        payload: {
+          title: 'Produit supprimé',
+          body: '« ' + productName + ' » a été supprimé.',
+        },
+      };
+      const result = await novu('/v1/events/trigger', 'POST', event);
+      return send(res, 200, { triggered: true, subscriberId, result });
+    }
     if (req.url === '/push/trigger') {
       // Admin-only manual test: never put TEST_TRIGGER_KEY inside Flutter.
       if (req.headers.authorization !== 'Bearer ' + triggerKey) {
@@ -147,6 +169,13 @@ const server = createServer(async (req, res) => {
   }
 });
 server.listen(port, host, () => {
-  console.log('Novu development bridge listening at http://' + host + ':' + port);
+  const maskedKey = (value) => '••••••••' + value.slice(-4);
+  console.log('Novu local bridge listening at http://' + host + ':' + port);
+  console.log('NOVU_ENVIRONMENT:', novuEnvironment);
+  console.log('NOVU_API_BASE_URL:', novuUrl);
+  console.log('NOVU_SECRET_KEY: importée (masquée)', maskedKey(novuKey));
+  console.log('TEST_TRIGGER_KEY: importée (masquée)', maskedKey(triggerKey));
+  console.log('NOVU_SECRET_KEY et TEST_TRIGGER_KEY distinctes:', novuKey !== triggerKey);
+  console.log('NOVU_FCM_INTEGRATION_IDENTIFIER:', integrationIdentifier ? 'configuré' : 'vide (sélection par défaut)');
   console.log('Only use for local testing; use real user authentication before production.');
 });
