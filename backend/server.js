@@ -3,7 +3,7 @@
 import { createServer } from 'node:http';
 
 const env = process.env;
-const host = '127.0.0.1'; // Intentionally locked to loopback.
+const host = '0.0.0.0'; // Listen on all interfaces for mobile device access.
 const port = Number(env.PORT || 3000);
 const allowedOrigin = env.FLUTTER_WEB_ORIGIN || 'http://localhost:8080';
 const novuUrl = (env.NOVU_API_BASE_URL || '').replace(/\/+$/, '');

@@ -64,7 +64,38 @@ class MyApp extends StatelessWidget {
       title: 'CRUD Flutter',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.indigo,
+          seedColor: const Color(0xFF5264D8),
+        ),
+        scaffoldBackgroundColor: const Color(0xFFF6F7FB),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFFF6F7FB),
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: false,
+        ),
+        cardTheme: CardThemeData(
+          color: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: Color(0xFFE9EAF1)),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Color(0xFFE5E7EF)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Color(0xFFE5E7EF)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Color(0xFF5264D8), width: 1.5),
+          ),
         ),
         useMaterial3: true,
       ),

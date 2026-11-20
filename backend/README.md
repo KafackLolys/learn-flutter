@@ -1,5 +1,7 @@
 # Passerelle de test Flutter → Novu → FCM
 
+> Pour le CRUD Flutter et l'envoi des pushes après suppression, utiliser désormais le backend NestJS dans `E:\Projet\Test\all-test-backend`. Ce serveur Node local est conservé pour les diagnostics Novu historiques.
+
 Cette passerelle Node.js est **réservée au développement local**. Elle n'implémente pas d'authentification utilisateur et ne doit jamais être exposée sur Internet. Elle écoute seulement sur 127.0.0.1.
 
 ## 1. Prérequis
