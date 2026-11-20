@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../models/product.dart';
 import '../data/product_data.dart';
 import 'notifications_page.dart';
@@ -184,6 +185,14 @@ class _ProductPageState extends State<ProductPage> {
   }
 
   Future<void> _notifyProductDeleted(Product product) async {
+    if (!kIsWeb) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Produit supprimé. Pour tester un vrai push Android, '
+            'envoyez un message depuis Firebase Console.'),
+      ));
+      return;
+    }
     try {
       await _push.notifyProductDeleted(product.name);
       if (!mounted) return;

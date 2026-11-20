@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import '../services/push_notification_service.dart';
 
 class NotificationsPage extends StatelessWidget {
@@ -22,8 +24,27 @@ class NotificationsPage extends StatelessWidget {
             ],
             const SizedBox(height: 12),
             SelectableText('Token FCM : ${push.token ?? "indisponible"}'),
+            if (!kIsWeb && push.token != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  icon: const Icon(Icons.copy),
+                  label: const Text('Copier le token FCM'),
+                  onPressed: () async {
+                    await Clipboard.setData(ClipboardData(text: push.token!));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Token FCM copié')),
+                      );
+                    }
+                  },
+                ),
+              ),
             const SizedBox(height: 8),
-            Text(push.registeredWithBackend
+            if (!kIsWeb)
+              const Text('Mode Android sans backend : envoyez un message de test '
+                  'depuis Firebase Console vers le token affiché ci-dessus.')
+            else Text(push.registeredWithBackend
                 ? 'Appareil enregistré auprès du backend Novu.'
                 : 'Appareil non encore enregistré auprès du backend Novu.'),
             Wrap(spacing: 8, children: [
@@ -31,7 +52,7 @@ class NotificationsPage extends StatelessWidget {
                 onPressed: push.initialize,
                 child: const Text('Initialiser FCM'),
               ),
-              OutlinedButton(
+              if (kIsWeb) OutlinedButton(
                 onPressed: push.retryRegistration,
                 child: const Text('Réessayer l’enregistrement'),
               ),

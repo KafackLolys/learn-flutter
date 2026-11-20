@@ -96,7 +96,7 @@ class PushNotificationService extends ChangeNotifier {
         token = newToken;
         registeredWithBackend = false;
         notifyListeners();
-        await _registerToken();
+        if (kIsWeb) await _registerToken();
       });
 
       _foregroundSubscription = FirebaseMessaging.onMessage.listen((message) async {
@@ -128,7 +128,9 @@ class PushNotificationService extends ChangeNotifier {
       initialized = true;
       error = null;
       notifyListeners();
-      await _registerToken();
+      // Native FCM reception works without any application backend.
+      // The token can be used in Firebase Console's test-message form.
+      if (kIsWeb) await _registerToken();
     } catch (exception) {
       error = 'Initialisation FCM impossible : $exception';
     }
@@ -187,7 +189,7 @@ class PushNotificationService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> retryRegistration() => _registerToken();
+  Future<void> retryRegistration() => kIsWeb ? _registerToken() : initialize();
 
   Future<void> notifyProductDeleted(String productName) async {
     if (productDeletedEndpoint.isEmpty) {
